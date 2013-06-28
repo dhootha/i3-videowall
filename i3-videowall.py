@@ -21,6 +21,31 @@ parser=ArgumentParser(description='Play a wall of video in i3-wm.',
 parser.add_argument('files', metavar='VIDEO', nargs='+', help='File to play')
 parser.add_argument('-n', type=int, default=2, help="Maximum to play at one time")
 
+class player_window(object):
+    def __init__(self, window):
+        self.window=window
+        self.id=window['id']
+        self.height=window['window_rect']['height']
+        self.width=window['window_rect']['width']
+        self.area=self.width*self.height
+    
+def find_player_to_split():
+    """
+    Find the largest of the MPlayer windows and focus on it and decide
+    to split either horizontally or vertically
+    """
+    windows = i3.filter(name="MPlayer")
+    if len(windows)>0:
+        biggest = player_window(windows[0])
+        for w in windows:
+            w = player_window(w)
+            if w.area>biggest.area:
+                biggest = w
+
+        return biggest
+    else:
+        return None
+
 if __name__ == '__main__':
     args = parser.parse_args()
 
@@ -29,7 +54,6 @@ if __name__ == '__main__':
     max_play = args.n
     video_commands = shlex.split(MPLAYER_CMD)
     dev_null = os.open("/dev/null", os.O_WRONLY)
-    split = 'parent'
 
     i3.workspace('videowall')
     i3.layout('default')
@@ -45,21 +69,29 @@ if __name__ == '__main__':
             cmd = list(video_commands)
             cmd.append(video)
             print "cmd=%s" % (cmd)
+
             i3.workspace('videowall')
-            #i3.focus('parent')
-            if split == 'parent':
-                i3.focus('parent')
-                split = 'h'
-            elif split == 'h':
-                i3.split('h')
-                split = 'v'
-            elif split == 'v':
-                i3.split('v')
-                split = 'parent'
+            w = find_player_to_split()
+            if w:
+                print "Found a window %d to split (%dx%d)" % (w.id, w.width, w.height)
+                i3.focus(id=w.id)
+                if w.width>w.height:
+                    print "horizontal"
+                    i3.split("h")
+                else:
+                    print "vertical"
+                    i3.split("v")
+
+                i3.focus(id=w.id)
+                state = i3.filter(id=w.id)
+                print "State of window is: %s" % (state)
+            else:
+                print "No window to split"
 
             player = Popen(cmd, stdout=dev_null, stderr=dev_null)
             playing_videos.append(player)
             print "playing_videos now: %d, %s" % (len(playing_videos), playing_videos)
+            sleep(1)
 
         print "starting poll cycle"
         for p in playing_videos:
