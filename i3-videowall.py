@@ -25,8 +25,8 @@ class player_window(object):
     def __init__(self, window):
         self.window=window
         self.id=window['id']
-        self.height=window['window_rect']['height']
-        self.width=window['window_rect']['width']
+        self.height=window['rect']['height']
+        self.width=window['rect']['width']
         self.area=self.width*self.height
     
 def find_player_to_split():
@@ -74,7 +74,7 @@ if __name__ == '__main__':
             w = find_player_to_split()
             if w:
                 print "Found a window %d to split (%dx%d)" % (w.id, w.width, w.height)
-                i3.focus(id=w.id)
+                print "focusing: %s " % (i3.focus(con_id=w.id))
                 if w.width>w.height:
                     print "horizontal"
                     i3.split("h")
@@ -82,7 +82,7 @@ if __name__ == '__main__':
                     print "vertical"
                     i3.split("v")
 
-                i3.focus(id=w.id)
+#                print "refocusing: %s " % (i3.focus(id=w.id))
                 state = i3.filter(id=w.id)
                 print "State of window is: %s" % (state)
             else:
