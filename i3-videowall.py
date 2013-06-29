@@ -91,7 +91,7 @@ if __name__ == '__main__':
             player = Popen(cmd, stdout=dev_null, stderr=dev_null)
             playing_videos.append(player)
             print "playing_videos now: %d, %s" % (len(playing_videos), playing_videos)
-            sleep(1)
+            sleep(0.5)
 
         print "starting poll cycle"
         for p in playing_videos:
