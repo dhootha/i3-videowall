@@ -7,6 +7,7 @@ import os
 
 from subprocess import Popen
 from time import sleep
+from random import choice
 from argparse import ArgumentParser
 
 MPLAYER_CMD="/usr/bin/mplayer -zoom -noborder -nosound"
@@ -20,29 +21,54 @@ parser=ArgumentParser(description='Play a wall of video in i3-wm.',
 
 parser.add_argument('files', metavar='VIDEO', nargs='+', help='File to play')
 parser.add_argument('-n', type=int, default=2, help="Maximum to play at one time")
+parser.add_argument('--split', '-s', default="biggest", help="Which window to split when starting a new one")
+
+class rect(object):
+    """
+    A simple container for rectangles
+    """
+    def __init__(self, rect_hash):
+        self.__dict__.update(rect_hash)
+        self.area = self.width*self.height
+
+    def __str__(self):
+        return "%dx%d" % (self.width, self.height)
+
+    def is_wider(self):
+        if self.width>self.height:
+            return True
+        else:
+            return False
 
 class player_window(object):
+
+                
     def __init__(self, window):
         self.window=window
-        self.id=window['id']
-        self.height=window['rect']['height']
-        self.width=window['rect']['width']
-        self.area=self.width*self.height
-    
-def find_player_to_split():
+        # slurp hash into object
+        self.__dict__.update(window)
+        # calculate area
+        self.container = rect(self.rect)
+        self.player = rect(self.window_rect)
+
+    def __str__(self):
+        return "Window ID:%d %s (player %s)" % (self.id,
+                                                self.container,
+                                                self.player)
+        
+def find_player_to_split(method="biggest"):
     """
     Find the largest of the MPlayer windows and focus on it and decide
     to split either horizontally or vertically
     """
     windows = i3.filter(name="MPlayer")
     if len(windows)>0:
-        biggest = player_window(windows[0])
-        for w in windows:
-            w = player_window(w)
-            if w.area>biggest.area:
-                biggest = w
-
-        return biggest
+        window_list = [player_window(w) for w in windows]
+        if method=="biggest":
+            return max(window_list,key=lambda w: w.player.area)
+        elif method=="random":
+            return choice(window_list)
+            
     else:
         return None
 
@@ -71,20 +97,15 @@ if __name__ == '__main__':
             print "cmd=%s" % (cmd)
 
             i3.workspace('videowall')
-            w = find_player_to_split()
+            w = find_player_to_split(args.split)
             if w:
-                print "Found a window %d to split (%dx%d)" % (w.id, w.width, w.height)
+                print "Found: %s" % (w)
                 print "focusing: %s " % (i3.focus(con_id=w.id))
-                if w.width>w.height:
-                    print "horizontal"
+                if w.container.is_wider():
                     i3.split("h")
                 else:
-                    print "vertical"
                     i3.split("v")
 
-#                print "refocusing: %s " % (i3.focus(id=w.id))
-                state = i3.filter(id=w.id)
-                print "State of window is: %s" % (state)
             else:
                 print "No window to split"
 
